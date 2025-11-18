@@ -1,5 +1,5 @@
 // src/main.jsx
-import { StrictMode, useState } from 'react'
+import { StrictMode, useState, useEffect } from 'react'
 import { createRoot } from 'react-dom/client'
 import SplashScreen from './pages/SplashScreen';
 import HomePage from './pages/HomePage';
@@ -21,6 +21,20 @@ function AppRoot() {
   const [selectedRecipeId, setSelectedRecipeId] = useState(null);
   const [selectedCategory, setSelectedCategory] = useState('makanan');
   const [editingRecipeId, setEditingRecipeId] = useState(null);
+
+  // Check URL parameters on mount for deep linking
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const recipeId = urlParams.get('recipeId');
+    const category = urlParams.get('category');
+    
+    if (recipeId) {
+      setSelectedRecipeId(parseInt(recipeId));
+      setSelectedCategory(category || 'makanan');
+      setMode('detail');
+      setShowSplash(false);
+    }
+  }, []);
 
   const handleSplashComplete = () => {
     setShowSplash(false);
