@@ -4,6 +4,11 @@ import PropTypes from 'prop-types';
 import { useRecipe } from '../../hooks/useRecipes';
 import { getDifficultyColor } from '../../utils/helpers';
 import { ArrowLeft, Clock, Users, ChefHat, Star, Edit, Trash2 } from 'lucide-react';
+import { useReviews, useCreateReview } from '../../hooks/useReviews';
+import { useIsFavorited } from '../../hooks/useFavorites';
+import { getUserIdentifier } from '../../hooks/useFavorites';
+import { formatDate, getDifficultyColor } from '../../utils/helpers';
+import { ArrowLeft, Clock, Users, ChefHat, Star, Send, Edit, Trash2, Share2 } from 'lucide-react';
 import recipeService from '../../services/recipeService';
 import ConfirmModal from '../modals/ConfirmModal';
 import FavoriteButton from '../common/FavoriteButton';
@@ -11,8 +16,15 @@ import ReviewSection from './ReviewSection';
 
 export default function RecipeDetail({ recipeId, onBack, onEdit, category = 'makanan' }) {
   const { recipe, loading: recipeLoading, error: recipeError } = useRecipe(recipeId);
+  const { reviews, loading: reviewsLoading, refetch: refetchReviews } = useReviews(recipeId);
+  const { createReview, loading: createLoading } = useCreateReview();
+
+  const [rating, setRating] = useState(5);
+  const [comment, setComment] = useState('');
+  const [showReviewForm, setShowReviewForm] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [shareSuccess, setShareSuccess] = useState(false);
 
   const categoryColors = {
     makanan: {
@@ -37,6 +49,28 @@ export default function RecipeDetail({ recipeId, onBack, onEdit, category = 'mak
 
   const colors = categoryColors[category] || categoryColors.makanan;
 
+  const handleSubmitReview = async (e) => {
+    e.preventDefault();
+    
+    // Get username from user profile
+    const userProfile = userService.getUserProfile();
+    
+    const reviewData = {
+      user_identifier: userProfile.username || getUserIdentifier(),
+      rating,
+      comment: comment.trim(),
+    };
+
+    const success = await createReview(recipeId, reviewData);
+    
+    if (success) {
+      setComment('');
+      setRating(5);
+      setShowReviewForm(false);
+      refetchReviews();
+    }
+  };
+
   const handleDeleteRecipe = async () => {
     try {
       setDeleting(true);
@@ -56,6 +90,40 @@ export default function RecipeDetail({ recipeId, onBack, onEdit, category = 'mak
       alert(err.message || 'Terjadi kesalahan saat menghapus resep');
     } finally {
       setDeleting(false);
+    }
+  };
+
+  const handleShareRecipe = async () => {
+    // Generate shareable URL
+    const shareUrl = `${window.location.origin}${window.location.pathname}?recipeId=${recipeId}&category=${category}`;
+    const shareData = {
+      title: recipe.name,
+      text: `Lihat resep ${recipe.name} di Resep Nusantara!`,
+      url: shareUrl
+    };
+
+    try {
+      // Try using Web Share API (works on mobile and some desktop browsers)
+      if (navigator.share) {
+        await navigator.share(shareData);
+      } else {
+        // Fallback to clipboard copy
+        await navigator.clipboard.writeText(shareUrl);
+        setShareSuccess(true);
+        setTimeout(() => setShareSuccess(false), 3000);
+      }
+    } catch (err) {
+      // If share was cancelled or failed, try clipboard as fallback
+      if (err.name !== 'AbortError') {
+        try {
+          await navigator.clipboard.writeText(shareUrl);
+          setShareSuccess(true);
+          setTimeout(() => setShareSuccess(false), 3000);
+        } catch (clipboardErr) {
+          console.error('Share error:', clipboardErr);
+          alert('Gagal membagikan resep');
+        }
+      }
     }
   };
 
@@ -132,29 +200,49 @@ export default function RecipeDetail({ recipeId, onBack, onEdit, category = 'mak
           </button>
 
           {/* Action Buttons */}
-          {onEdit && (
-            <div className="flex gap-2">
+          <div className="flex gap-2">
+            {/* Share Button - Always visible */}
+            <div className="relative">
               <button
-                onClick={() => {
-                  console.log('🖱️ Edit button clicked in RecipeDetail');
-                  console.log('📝 Recipe ID:', recipeId);
-                  console.log('🔧 onEdit function:', onEdit);
-                  onEdit(recipeId);
-                }}
-                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                onClick={handleShareRecipe}
+                className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                title="Bagikan resep"
               >
-                <Edit className="w-4 h-4" />
-                <span className="hidden md:inline">Edit</span>
+                <Share2 className="w-4 h-4" />
+                <span className="hidden md:inline">Bagikan</span>
               </button>
-              <button
-                onClick={() => setShowDeleteModal(true)}
-                className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
-              >
-                <Trash2 className="w-4 h-4" />
-                <span className="hidden md:inline">Hapus</span>
-              </button>
+              {shareSuccess && (
+                <div className="absolute -bottom-10 left-1/2 -translate-x-1/2 bg-slate-800 text-white text-xs px-3 py-1 rounded-lg whitespace-nowrap">
+                  Link disalin!
+                </div>
+              )}
             </div>
-          )}
+
+            {/* Edit and Delete buttons - Only when onEdit is provided */}
+            {onEdit && (
+              <>
+                <button
+                  onClick={() => {
+                    console.log('🖱️ Edit button clicked in RecipeDetail');
+                    console.log('📝 Recipe ID:', recipeId);
+                    console.log('🔧 onEdit function:', onEdit);
+                    onEdit(recipeId);
+                  }}
+                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  <Edit className="w-4 h-4" />
+                  <span className="hidden md:inline">Edit</span>
+                </button>
+                <button
+                  onClick={() => setShowDeleteModal(true)}
+                  className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  <span className="hidden md:inline">Hapus</span>
+                </button>
+              </>
+            )}
+          </div>
         </div>
       </div>
 
