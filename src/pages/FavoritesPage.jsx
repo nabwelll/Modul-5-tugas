@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { getFavorites, removeFavorite } from '../utils/favorites';
 import { Clock, Star, ChefHat, Heart, AlertCircle } from 'lucide-react';
+import LazyImage from '../components/common/LazyImage';
 
 export default function FavoritesPage() {
   const [favorites, setFavorites] = useState([]);
@@ -63,7 +64,7 @@ export default function FavoritesPage() {
                     } opacity-0 group-hover:opacity-100 transition-opacity duration-500`} />
                     
                     <div className="relative h-32 md:h-56 overflow-hidden">
-                      <img 
+                      <LazyImage 
                         src={recipe.image_url}
                         alt={recipe.name}
                         className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
