@@ -1,6 +1,9 @@
 // src/components/recipe/RecipeDetail.jsx
 import { useState } from 'react';
+import PropTypes from 'prop-types';
 import { useRecipe } from '../../hooks/useRecipes';
+import { getDifficultyColor } from '../../utils/helpers';
+import { ArrowLeft, Clock, Users, ChefHat, Star, Edit, Trash2 } from 'lucide-react';
 import { useReviews, useCreateReview } from '../../hooks/useReviews';
 import { useIsFavorited } from '../../hooks/useFavorites';
 import { getUserIdentifier } from '../../hooks/useFavorites';
@@ -9,7 +12,7 @@ import { ArrowLeft, Clock, Users, ChefHat, Star, Send, Edit, Trash2, Share2 } fr
 import recipeService from '../../services/recipeService';
 import ConfirmModal from '../modals/ConfirmModal';
 import FavoriteButton from '../common/FavoriteButton';
-import userService from '../../services/userService';
+import ReviewSection from './ReviewSection';
 
 export default function RecipeDetail({ recipeId, onBack, onEdit, category = 'makanan' }) {
   const { recipe, loading: recipeLoading, error: recipeError } = useRecipe(recipeId);
@@ -387,123 +390,16 @@ export default function RecipeDetail({ recipeId, onBack, onEdit, category = 'mak
         </div>
 
         {/* Reviews Section */}
-        <div className="bg-white/60 backdrop-blur-sm rounded-3xl p-6 md:p-8 shadow-xl border border-white/40">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-2xl font-bold text-slate-800">
-              Ulasan ({reviews?.length || 0})
-            </h2>
-            <button
-              onClick={() => setShowReviewForm(!showReviewForm)}
-              className={`px-4 py-2 bg-${colors.primary}-600 text-white rounded-xl hover:bg-${colors.primary}-700 transition-colors font-medium`}
-            >
-              {showReviewForm ? 'Batal' : 'Tulis Ulasan'}
-            </button>
-          </div>
-
-          {/* Review Form */}
-          {showReviewForm && (
-            <form onSubmit={handleSubmitReview} className="mb-8 bg-white/70 rounded-2xl p-6 border border-white/60">
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-slate-700 mb-2">
-                  Rating
-                </label>
-                <div className="flex gap-2">
-                  {[1, 2, 3, 4, 5].map((star) => (
-                    <button
-                      key={star}
-                      type="button"
-                      onClick={() => setRating(star)}
-                      className="focus:outline-none"
-                    >
-                      <Star
-                        className={`w-8 h-8 ${
-                          star <= rating
-                            ? 'text-amber-500 fill-current'
-                            : 'text-slate-300'
-                        } hover:scale-110 transition-transform`}
-                      />
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-slate-700 mb-2">
-                  Komentar
-                </label>
-                <textarea
-                  value={comment}
-                  onChange={(e) => setComment(e.target.value)}
-                  placeholder="Bagikan pengalaman Anda dengan resep ini..."
-                  rows={4}
-                  className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white resize-none"
-                />
-              </div>
-
-              <button
-                type="submit"
-                disabled={createLoading || !comment.trim()}
-                className={`w-full md:w-auto px-6 py-3 bg-${colors.primary}-600 text-white rounded-xl hover:bg-${colors.primary}-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2`}
-              >
-                <Send className="w-4 h-4" />
-                {createLoading ? 'Mengirim...' : 'Kirim Ulasan'}
-              </button>
-            </form>
-          )}
-
-          {/* Reviews List */}
-          <div className="space-y-4">
-            {reviewsLoading ? (
-              <div className="text-center py-8">
-                <div className={`animate-spin rounded-full h-8 w-8 border-b-2 border-${colors.primary}-600 mx-auto`}></div>
-              </div>
-            ) : reviews && reviews.length > 0 ? (
-              reviews.map((review) => (
-                <div
-                  key={review.id}
-                  className="bg-white/70 rounded-2xl p-6 border border-white/60"
-                >
-                  <div className="flex items-start justify-between mb-3">
-                    <div>
-                      <p className="font-semibold text-slate-800">
-                        {review.user_identifier}
-                      </p>
-                      <div className="flex items-center gap-1 mt-1">
-                        {[1, 2, 3, 4, 5].map((star) => (
-                          <Star
-                            key={star}
-                            className={`w-4 h-4 ${
-                              star <= review.rating
-                                ? 'text-amber-500 fill-current'
-                                : 'text-slate-300'
-                            }`}
-                          />
-                        ))}
-                      </div>
-                    </div>
-                    <p className="text-sm text-slate-500">
-                      {formatDate(review.created_at)}
-                    </p>
-                  </div>
-                  {review.comment && (
-                    <p className="text-slate-700 leading-relaxed">
-                      {review.comment}
-                    </p>
-                  )}
-                </div>
-              ))
-            ) : (
-              <div className="text-center py-8">
-                <p className="text-slate-500">Belum ada ulasan untuk resep ini.</p>
-                <p className="text-slate-400 text-sm mt-2">
-                  Jadilah yang pertama memberikan ulasan!
-                </p>
-              </div>
-            )}
-          </div>
-        </div>
+        <ReviewSection recipeId={recipeId} colors={colors} />
       </main>
     </div>
   );
 }
+
+RecipeDetail.propTypes = {
+  recipeId: PropTypes.string.isRequired,
+  onBack: PropTypes.func,
+  onEdit: PropTypes.func,
+  category: PropTypes.oneOf(['makanan', 'minuman']),
+};
 
